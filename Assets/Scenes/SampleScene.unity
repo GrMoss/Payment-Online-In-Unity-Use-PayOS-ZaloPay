@@ -555,6 +555,79 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 699770330}
   m_CullTransparentMesh: 1
+--- !u!1 &1653907421
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1653907424}
+  - component: {fileID: 1653907423}
+  - component: {fileID: 1653907422}
+  m_Layer: 0
+  m_Name: ScriptPayment
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1653907422
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1653907421}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 41238c9e362d2449296fcdc28280f030, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  webView: {fileID: 1893372461}
+  xClientId: "t\u1EF1 l\u1EA5y \u0111i, ai m\xE0 cho"
+  xApiKey: "t\u1EF1 l\u1EA5y \u0111i, ai m\xE0 cho"
+  checksumKey: "t\u1EF1 l\u1EA5y \u0111i, ai m\xE0 cho"
+  partnerCodeOptional: 
+  amount: 5000
+  description: UNITY01
+  cancelUrl: https://dinhnt.com/cancel
+  returnUrl: https://dinhnt.com/return
+--- !u!114 &1653907423
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1653907421}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5cd6abaa819874e948e4705770890483, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  webView: {fileID: 1893372461}
+  appId: 554
+  key1: 8NdU5pG5R2spGHGhyO99HN1OhD8IQJBn
+  key2: uUfsWgfLkRLzq6W2uNXTCxrfxs51auny
+  amount: 10000
+  appUser: dinhnt24_001
+  description: Thanh toan trong Unity
+--- !u!4 &1653907424
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1653907421}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1893372461 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 114939446366399424, guid: 7e3f16a6f6303419cbd9837f6c746de4, type: 3}
@@ -649,9 +722,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 2074923369}
-        m_TargetAssemblyTypeName: Payment, Assembly-CSharp
-        m_MethodName: CreateLinkPayment
+      - m_Target: {fileID: 1653907423}
+        m_TargetAssemblyTypeName: PaymentZaloPay, Assembly-CSharp
+        m_MethodName: Payment
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -852,7 +925,7 @@ Canvas:
   m_GameObject: {fileID: 2034124911}
   m_Enabled: 1
   serializedVersion: 3
-  m_RenderMode: 0
+  m_RenderMode: 1
   m_Camera: {fileID: 519420031}
   m_PlaneDistance: 100
   m_PixelPerfect: 0
@@ -898,7 +971,6 @@ GameObject:
   - component: {fileID: 2074923372}
   - component: {fileID: 2074923371}
   - component: {fileID: 2074923370}
-  - component: {fileID: 2074923369}
   m_Layer: 5
   m_Name: Panel
   m_TagString: Untagged
@@ -906,27 +978,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &2074923369
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2074923368}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 41238c9e362d2449296fcdc28280f030, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  webView: {fileID: 1893372461}
-  xClientId: ad0d17ea-12fb-4613-b0a1-81b866c84e80
-  xApiKey: 3c9e4f20-bb0f-44e4-8529-fa0d1d651e1a
-  checksumKey: 9cfbe621228779e04e3b820e30fb4c111fde875c57053f771b35192f57ba64c7
-  partnerCodeOptional: 
-  amount: 5000
-  description: UNITY01
-  cancelUrl: https://dinhnt.com/cancel
-  returnUrl: https://dinhnt.com/return
 --- !u!114 &2074923370
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -993,3 +1044,4 @@ SceneRoots:
   - {fileID: 2034124915}
   - {fileID: 596955222}
   - {fileID: 1983206064}
+  - {fileID: 1653907424}
