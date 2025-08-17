@@ -7,20 +7,18 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Networking;
 
-public class PaymentZaloPay : MonoBehaviour
+public class PaymentZaloPayWithQR : MonoBehaviour
 {
-    public UniWebView webView;
-
-    // Sandbox credentials
     public string appId = "554";
     public string key1 = "8NdU5pG5R2spGHGhyO99HN1OhD8IQJBn";
     public string key2 = "uUfsWgfLkRLzq6W2uNXTCxrfxs51auny";
-
     public long amount = 10000;
     public string appUser = "dinhnt24_001";
     public string description = "Thanh toan trong Unity";
 
     private string appTransId;
+
+    public QRDemo qRDemo;
 
     public TMP_Text txtResult;
 
@@ -70,11 +68,13 @@ public class PaymentZaloPay : MonoBehaviour
             var json = JsonUtility.FromJson<CreateOrderResponse>(EnsureOrderUrlField(req.downloadHandler.text));
             if (json.return_code == 1)
             {
-                // Nếu có order_url thì mở cổng thanh toán
+                // Nếu có order_url thì show QRCode
                 if (!string.IsNullOrEmpty(json.order_url))
                 {
-                    OpenWebView(json.order_url);
+                    qRDemo.GenQR(json.order_url);
                 }
+                // Sau khi tạo đơn, thử gọi query trạng thái
+                StartCoroutine(PollingQueryOrder());
             }
             else
             {
@@ -87,30 +87,80 @@ public class PaymentZaloPay : MonoBehaviour
         }
     }
 
-    void OpenWebView(string url)
+    IEnumerator PollingQueryOrder(float interval = 3f, int maxRetry = 100)
     {
-        var go = new GameObject("ZaloPayWebView");
-        webView = go.AddComponent<UniWebView>();
-        webView.Frame = new Rect(0, 0, Screen.width, Screen.height);
-
-        webView.OnPageStarted += OnPageStarted;
-        webView.OnPageFinished += (view, code, u) => Debug.Log("Loaded: " + u);
-        webView.Load(url);
-        webView.Show();
-    }
-
-    void OnPageStarted(UniWebView view, string url)
-    {
-        Debug.Log("Redirect: " + url);
-
-        if (url.Contains("dinhnt.com/return"))
+        int count = 0;
+        while (count < maxRetry)
         {
-            webView.Hide();
-            txtResult.text = "Giao dịch thành công";
+            yield return QueryOrder();   // gọi check
+            yield return new WaitForSeconds(interval);
+
+            // Nếu đã có kết quả thành công/thất bại thì thoát luôn
+            if (lastQueryStatus == QueryStatus.Success || lastQueryStatus == QueryStatus.Failed)
+            {
+                Debug.Log("Stop polling vì đã có kết quả cuối: " + lastQueryStatus);
+                txtResult.text = "Kết quả giao dịch: " + lastQueryStatus;
+                break;
+            }
+
+            count++;
+        }
+        if (count >= maxRetry)
+        {
+            Debug.Log("Polling hết thời gian mà chưa có kết quả thanh toán.");
         }
     }
 
+    // Enum trạng thái đơn
+    public enum QueryStatus
+    {
+        Unknown,
+        Processing,
+        Success,
+        Failed
+    }
+    private QueryStatus lastQueryStatus = QueryStatus.Unknown;
 
+    IEnumerator QueryOrder()
+    {
+        string data = $"{appId}|{appTransId}|{key1}";
+        string mac = HmacSHA256(key1, data);
+
+        var form = new Dictionary<string, string> {
+        { "app_id",       appId },
+        { "app_trans_id", appTransId },
+        { "mac",          mac }
+    };
+
+        using UnityWebRequest req = UnityWebRequest.Post("https://sb-openapi.zalopay.vn/v2/query", form);
+        yield return req.SendWebRequest();
+
+        if (req.result == UnityWebRequest.Result.Success)
+        {
+            Debug.Log("QueryOrder Response: " + req.downloadHandler.text);
+
+            var json = JsonUtility.FromJson<QueryOrderResponse>(req.downloadHandler.text);
+            if (json.return_code == 1)
+            {
+                lastQueryStatus = QueryStatus.Success;
+                Debug.Log("Thanh toán thành công");
+            }
+            else if (json.return_code == 2)
+            {
+                lastQueryStatus = QueryStatus.Failed;
+                Debug.Log("Thanh toán thất bại");
+            }
+            else
+            {
+                lastQueryStatus = QueryStatus.Processing;
+                Debug.Log("Đơn hàng chưa thanh toán hoặc giao dịch đang xử lý");
+            }
+        }
+        else
+        {
+            Debug.Log("Request error: " + req.error);
+        }
+    }
     string HmacSHA256(string key, string data)
     {
         byte[] keyBytes = Encoding.UTF8.GetBytes(key);
@@ -134,6 +184,19 @@ public class PaymentZaloPay : MonoBehaviour
         public string order_token;
         public string qr_code;         // VietQR payload (NAPAS) để tự render QR
     }
+
+    [Serializable]
+    public class QueryOrderResponse
+    {
+        public int return_code;
+        public string return_message;
+        public string sub_return_code;
+        public string sub_return_message;
+        public string is_processing;
+        public string amount;
+        public string zp_trans_id;
+    }
+
 
     // Bổ sung field thiếu để JsonUtility không null khi server không trả order_url
     string EnsureOrderUrlField(string raw)

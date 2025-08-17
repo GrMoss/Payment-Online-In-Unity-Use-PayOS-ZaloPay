@@ -6,7 +6,7 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
 
-public class Payment : MonoBehaviour
+public class PaymentPayOS : MonoBehaviour
 {
     public UniWebView webView;
     public string xClientId = "tự lấy đi, ai mà cho"; //lấy trên PayOS
