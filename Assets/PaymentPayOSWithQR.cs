@@ -7,7 +7,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Networking;
 
-public class PaymentPayOS : MonoBehaviour
+public class PaymentPayOSWithQR : MonoBehaviour
 {
     public UniWebView webView;
     public string xClientId = "ad0d17ea-12fb-4613-b0a1-81b866c84e80"; //lấy trên PayOS
@@ -15,22 +15,25 @@ public class PaymentPayOS : MonoBehaviour
     public string checksumKey = "9cfbe621228779e04e3b820e30fb4c111fde875c57053f771b35192f57ba64c7"; //lấy trên PayOS
     public string partnerCodeOptional;
 
-    public int amount = 5000; //thay đổi số tiền cần thanh toán
+    public int amount = 6000; //thay đổi số tiền cần thanh toán
     public string description = "UNITY01"; //tự tạo mã đơn nếu muốn
     public string cancelUrl = "https://dinhnt.com/cancel"; //có thể thay bằng link khác
     public string returnUrl = "https://dinhnt.com/return"; //có thể thay bằng link khác
 
+    long orderCode = DateTimeOffset.UtcNow.ToUnixTimeSeconds(); // đảm bảo duy nhất
+    private bool isChecking = false;
+
+    public QRDemo qRDemo;
     public TMP_Text txtResult;
 
-    public void CreatePaymentLinkPayOS()
+    public void CreatePaymentPayOSWithQR()
     {
-        txtResult.text = "Đang thực hiện thanh toán bằng phương thức PayOS (Link)";
-        StartCoroutine(CreateLinkPayOS());
+        txtResult.text = "Đang thực hiện thanh toán bằng phương thức QR PayOS";
+        StartCoroutine(CreatePayOSQR());
     }
 
-    IEnumerator CreateLinkPayOS()
+    IEnumerator CreatePayOSQR()
     {
-        long orderCode = DateTimeOffset.UtcNow.ToUnixTimeSeconds(); // đảm bảo duy nhất
         int expiredAt = (int)DateTimeOffset.UtcNow.AddMinutes(30).ToUnixTimeSeconds();
 
         //Tạo data để ký theo đúng thứ tự alphabet
@@ -41,7 +44,7 @@ public class PaymentPayOS : MonoBehaviour
         string signature = HmacSha256Hex(toSign, checksumKey);
 
         //Tạo payload
-        var req = new CreatePaymentRequest
+        var req = new CreatePaymentQRRequest
         {
             orderCode = orderCode,
             amount = amount,
@@ -74,18 +77,20 @@ public class PaymentPayOS : MonoBehaviour
                 Debug.LogError($"PayOS error: {www.responseCode} - {www.error}\n{www.downloadHandler.text}");
                 yield break;
             }
-
-            //Parse checkoutUrl từ response
-            var jsonText = www.downloadHandler.text;
-            Debug.Log(jsonText);
-            string checkoutUrl = ExtractCheckoutUrl(jsonText);
-            if (!string.IsNullOrEmpty(checkoutUrl))
-            {
-                OpenLinkPayment(checkoutUrl);
-            }
             else
             {
-                Debug.LogWarning("Không tìm thấy checkoutUrl trong phản hồi: " + jsonText);
+                var jsonText = www.downloadHandler.text;
+                PayOSResponse response = JsonUtility.FromJson<PayOSResponse>(jsonText);
+                if (response.data != null)
+                {
+                    qRDemo.GenQR(response.data.qrCode);
+
+                    // Sau khi tạo đơn, thử gọi query trạng thái
+                    if (!isChecking)
+                    {
+                        StartCoroutine(CheckPaymentLoop());
+                    }
+                }
             }
         }
     }
@@ -101,53 +106,62 @@ public class PaymentPayOS : MonoBehaviour
         }
     }
 
-    // Tách nhanh checkoutUrl
-    static string ExtractCheckoutUrl(string json)
+    IEnumerator CheckPaymentLoop()
     {
-        const string key = "\"checkoutUrl\":\"";
-        int i = json.IndexOf(key, StringComparison.Ordinal);
-        if (i < 0) return null;
-        i += key.Length;
-        int j = json.IndexOf("\"", i, StringComparison.Ordinal);
-        if (j < 0) return null;
-        return json.Substring(i, j - i).Replace("\\/", "/");
+        isChecking = true;
+        float elapsed = 0f;
+
+        while (isChecking && elapsed < 120f)
+        {
+            yield return StartCoroutine(CheckPaymentStatus());
+
+            if (!isChecking) // đã thanh toán thành công
+                yield break;
+
+            elapsed += 3f;
+            yield return new WaitForSeconds(3f);
+        }
+
+        if (isChecking)
+        {
+            Debug.Log("⏱ Hết thời gian chờ, chưa thấy thanh toán.");
+            isChecking = false;
+        }
     }
 
-    private void OpenLinkPayment(string link)
+    IEnumerator CheckPaymentStatus()
     {
-        webView = gameObject.AddComponent<UniWebView>();
-        webView.Frame = new Rect(0, 0, Screen.width, Screen.height);
-        webView.OnPageStarted += (view, url) =>
+        string url = $"https://api-merchant.payos.vn/v2/payment-requests/{orderCode}";
+        UnityWebRequest www = UnityWebRequest.Get(url);
+        www.SetRequestHeader("x-client-id", xClientId.Trim());
+        www.SetRequestHeader("x-api-key", xApiKey.Trim());
+        www.SetRequestHeader("Content-Type", "application/json");
+
+        yield return www.SendWebRequest();
+
+        if (www.result != UnityWebRequest.Result.Success)
         {
-            Debug.Log("Đang mở: " + url);
-
-            // Nếu là returnUrl (thanh toán thành công)
-            if (url.StartsWith(returnUrl))
+            Debug.LogError("PayOS QR Error: " + www.error);
+        }
+        else
+        {
+            PayOSStatusResponse resp = JsonUtility.FromJson<PayOSStatusResponse>(www.downloadHandler.text);
+            if (resp != null && resp.data != null)
             {
-                txtResult.text = "Thanh toán thành công! (PayOS Link)";
-                webView.Hide();
-                Destroy(webView);
-
-                // Gọi API cập nhật
+                Debug.Log("📡 Order status: " + resp.data.status);
+                if (resp.data.status == "PAID")
+                {
+                    txtResult.text = "Thanh toán thành công! (PayOS QR)";
+                    isChecking = false;
+                    yield break; // thoát loop
+                }
             }
-
-            // Nếu là cancelUrl (hủy thanh toán)
-            if (url.StartsWith(cancelUrl))
-            {
-                txtResult.text = "Thanh toán bị hủy! (PayOS Link)";
-                webView.Hide();
-                Destroy(webView);
-                //xử lý hủy link thanh toán
-            }
-        };
-
-        webView.Load(link);
-        webView.Show();
+        }
     }
 }
 
 [Serializable]
-public class PayOSItem
+public class PayOSQRItem
 {
     public string name;
     public int quantity;
@@ -155,7 +169,7 @@ public class PayOSItem
 }
 
 [Serializable]
-public class CreatePaymentRequest
+public class CreatePaymentQRRequest
 {
     public long orderCode;
     public int amount;
@@ -164,5 +178,39 @@ public class CreatePaymentRequest
     public string returnUrl;
     public int expiredAt;
     public string signature;
-    public List<PayOSItem> items;
+    public List<PayOSQRItem> items;
+}
+
+[Serializable]
+public class PayOSResponse
+{
+    public string code;
+    public string desc;
+    public PayOSData data;
+}
+
+[Serializable]
+public class PayOSData
+{
+    public string id;
+    public string orderCode;
+    public string checkoutUrl;
+    public string qrCode;
+}
+
+[Serializable]
+public class PayOSStatusResponse
+{
+    public string code;
+    public string desc;
+    public PayOSStatusData data;
+}
+
+[Serializable]
+public class PayOSStatusData
+{
+    public string id;
+    public string orderCode;
+    public int amount;
+    public string status;
 }

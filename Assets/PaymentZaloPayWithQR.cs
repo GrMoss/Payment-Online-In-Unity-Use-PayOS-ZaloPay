@@ -22,13 +22,13 @@ public class PaymentZaloPayWithQR : MonoBehaviour
 
     public TMP_Text txtResult;
 
-    public void Payment()
+    public void CreatePaymentZaloPayWithQR()
     {
-        txtResult.text = "Kết quả giao dịch";
-        StartCoroutine(CreateOrder());
+        txtResult.text = "Đang thực hiện thanh toán bằng phương thức QR Zalopay";
+        StartCoroutine(CreateZaloPayWithQR());
     }
 
-    IEnumerator CreateOrder()
+    IEnumerator CreateZaloPayWithQR()
     {
         // yymmdd phải theo giờ VN (GMT+7)
         var nowVN = DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(7)).DateTime;
