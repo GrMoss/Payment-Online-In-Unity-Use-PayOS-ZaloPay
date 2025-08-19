@@ -80,8 +80,9 @@ public class PaymentPayOSWithQR : MonoBehaviour
             else
             {
                 var jsonText = www.downloadHandler.text;
+                Debug.Log(jsonText);
                 PayOSResponse response = JsonUtility.FromJson<PayOSResponse>(jsonText);
-                if (response.data != null)
+                if (response.data.qrCode != null)
                 {
                     qRDemo.GenQR(response.data.qrCode);
 
